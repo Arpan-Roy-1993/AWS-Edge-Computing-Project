@@ -1,5 +1,5 @@
-import boto3
 import os
+import boto3
 from os import listdir
 import time
 from threading import Thread
@@ -112,8 +112,8 @@ def sendvideostosqs():
                 )
                 )
         print("sending video to SQS:"+str(listofvideos[0]))
+	os.system("rm /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0]))
         listofvideos.remove(listofvideos[0])
-
 
 t1= Thread(target=pollbucketandrundarknet,args=[])
 t1.start()
