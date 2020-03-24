@@ -1,2 +1,1 @@
 Demo
-video file: /home/pi/darknet/Big_Buck_Bunny_1080_10s_10MB.h264
