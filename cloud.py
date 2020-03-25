@@ -1,5 +1,5 @@
-import os
 import boto3
+import os
 from os import listdir
 import time
 from threading import Thread
@@ -9,10 +9,10 @@ from os.path import isfile, join
 
 
 
+ACCESS_KEY='ASIAX5QLJEL6XCXL6CEK'
+SECRET_KEY='n1MhR6oj3+7iDXAE1dLxiQSh+172l6ldCaKjXX97'
+SESSION_TOKEN='FwoGZXIvYXdzEJb//////////wEaDBuTxBf5+q5qop41giK/AZ4csvpqrHidSpWyroeyTThvE2pk487L8eIytfjyCt4QkuoyrR1IijXbAtVtKZoYiUY2uAaZK/CEA6KNbygH/vGINRPdHoV5JzMN2Du5XABTEjbhCDLFxooh7JhXxmjaH0MTYXmksE99G17ehfklUuBvLLvA4i9PPSEXgaCHMurO2mGoecr0yT7IgFemdaql0cjl3q7y8iKVvPN4sJl/rBr/CwNEaAmE2TEUTcVvsxXSwvwlH9UaWcs4jkivAb3cKOCM7/MFMi21MVQJ3YXWVGLzvqLmIfhnT4eTHvftvwukOAZuTHXNYMI45EUyWG/HZilRtgo='
 
-ACCESS_KEY = 'ASIAX5QLJEL66OVQ7TV4'
-SECRET_KEY = 'VfMmT6xB+6PrFIqpbuaCA3pPVjx2YY5zKcKUj6Mv'
-SESSION_TOKEN = 'FwoGZXIvYXdzEHwaDOmvfxeFB7/vaTS/wCK/ASG+m3tcGBMnYJUnRcYFDOHumFGe2QaWLvEt686LaUzZN07xsumh+BcR6f9yA1pdX4vhbracN1/nrfZJII4mfWWHaiH2ElI50/IwAH2aa4Vcbp69A/KjibwHdeDZYbm0HtTPAayFzH9YNHhL6QR53Xs5FOwofdaOitqHgLagojhAcXqeeNrfSuL/g5yEKbxyWBoVS+wODxHnaZSA3ahlmIwGWs8hnMcGKUFfjfNupnrz11EaxZuMMN02/gOprHMTKMqx6fMFMi1aogIRCd1rEZKlFtG+uKegMQMBqOv0djzVkH8rCI0i9oqq+EZtgcpkyt8l2t4='
 
 listofvideos=[]
 filetoobject={}
@@ -35,7 +35,7 @@ def pollbucketandrundarknet():
     if  listofvideos:
     	print("\n\nThe controller will process the video "+str(listofvideos[0]))
     	print("\n\n")
-    	os.system("./darknet detector demo cfg/voc.data cfg/yolov3-tiny.cfg yolov3-tiny.weights /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0])+ " >/home/ubuntu/darknet/results/"+str(listofvideos[0]).replace('.',"")+".txt")
+    	os.system("./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0])+ " >/home/ubuntu/darknet/results/"+str(listofvideos[0]).replace('.',"")+".txt")
 	
     	os.chdir("/home/ubuntu/darknet/results/")
     	mypath="/home/ubuntu/darknet/results/"
@@ -58,7 +58,7 @@ def pollbucketandrundarknet():
         	filetoobject[file]=listofobjects
     	uploadresulttos3(filetoobject)
     print("this will be executed\n")
-    os.system("rm /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0]))
+  #os.system("rm /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0]))
 
 def uploadresulttos3(filetoobject):
 
