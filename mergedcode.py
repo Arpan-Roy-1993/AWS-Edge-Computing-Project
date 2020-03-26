@@ -1,0 +1,180 @@
+import os
+import boto3
+from os import listdir
+import time
+from threading import Thread
+import collections
+from ec2_metadata import ec2_metadata
+from os.path import isfile, join
+from botocore.exceptions import ClientError
+
+#ACCESS_KEY = 'ASIAX5QLJEL67R74RBIS'
+#SECRET_KEY = 'ARDOPHdKAfs8KbVTNdyDfH1gVD/UAJULGwyxE4fv'
+#SESSION_TOKEN = 'FwoGZXIvYXdzEJj//////////wEaDDehrIA1d8XEFe3cdCK/AZ+cSqVYjNTBri2sLXSiT2Dq9hFEx6oeJNkJ5y1Id5hAsIiwOfD00q/WX9r2pBMcQ5UwyBV+F8naxGMGtQN1GizpXO2TYYVMFtHdwBZ/UP1jjz/VHseNBMXGds/gCeWVCpSfldv6m/8BBbLX97EEmvfbEto7AmhwKwluWKshxtKOlhFomMub8ze/5cZD0VCZux4ZoqpnaVEgJj9psFWNWViMENRNir9JIYNN9cOn1vUP5KzbIIGFzksMXJrt5o2UKPa/7/MFMi3Qgrl/XyWvKlTpXVJ31Ksz43Ut2Od18EQz9rhO8pfH4HcujicF0B98iQwKIG4='
+
+listofvideos = []
+filetoobject = {}
+
+s3_results_bucket= "cc-object-detection-results"
+def pollbucketanduploadtosqs():
+    #  time.sleep(5)
+    global listofvideos
+
+    # os.system("Xvfb :1 & export DISPLAY=:1")
+    session = boto3.Session(
+#        aws_access_key_id=ACCESS_KEY,
+#        aws_secret_access_key=SECRET_KEY,
+#        aws_session_token=SESSION_TOKEN,
+    )
+    s3 = session.resource('s3')
+    bucket = s3.Bucket('videosnotprocessed')
+    # while True:
+    for obj in bucket.objects.all():
+        listofvideos.append(obj.key)
+        bucket.download_file(obj.key, '/home/ubuntu/darknet/videostobeprocessed/' + str(obj.key))
+    sendvideostosqs()
+ 
+
+def uploadresulttos3(filetoobject):
+    client = boto3.client(
+        's3',
+#        aws_access_key_id=ACCESS_KEY,
+#        aws_secret_access_key=SECRET_KEY,
+#        aws_session_token=SESSION_TOKEN
+    )
+    # print(client)
+    print("Uploading to s3..\n")
+    for key, value in filetoobject.items():
+        value = ' '.join(value)
+        print("objects are:\n")
+        print(value)
+        client.put_object(Body=value, Bucket='raspberry', Key=key)
+    filetoobject = {}
+    print("completed")
+
+
+def sendvideostosqs():
+    global listofvideos
+    sqs = boto3.client(
+        'sqs',
+#        aws_access_key_id=ACCESS_KEY,
+#        aws_secret_access_key=SECRET_KEY,
+#        aws_session_token=SESSION_TOKEN,
+#        region_name='us-east-1'
+    )
+
+    # print(sqs)
+
+    response = sqs.get_queue_url(QueueName='object_detection_requests_queue')
+    queue_url = response['QueueUrl']
+    # Send message to SQS queue
+    while listofvideos:
+        response = sqs.send_message(
+            QueueUrl=queue_url,
+            DelaySeconds=1,
+
+            MessageBody=(
+		str(listofvideos[0])
+
+            )
+        )
+        print("sending video to SQS:" + str(listofvideos[0]))
+        os.system("rm /home/ubuntu/darknet/videostobeprocessed/" + str(listofvideos[0]))
+        listofvideos.remove(listofvideos[0])
+
+
+def uploadToS3(videoname, results,s3):
+    s3.put_object(Body = str(results), Bucket=s3_results_bucket, Key=videoname)
+
+
+
+
+def spawninstanceandrundarknet():
+    print("\n\nrunning darknet\n\n")
+    s3_bucket_name = "videosnotprocessed"
+
+    sqs = boto3.client('sqs')
+    s3 = boto3.client('s3')
+    ec2 = boto3.client('ec2')
+
+    response = sqs.get_queue_url(QueueName='object_detection_requests_queue')
+    print("queue url\n\n\n")
+    print(response['QueueUrl'])
+    queue_url = response['QueueUrl']
+
+    count = 0
+    while True:
+        # Receive message from SQS queue
+        response = sqs.receive_message(
+            QueueUrl=queue_url,
+            AttributeNames=[
+                'SentTimestamp'
+            ],
+            MaxNumberOfMessages=1,
+            MessageAttributeNames=[
+                'All'
+            ],
+            VisibilityTimeout=0,
+            WaitTimeSeconds=0
+        )
+        if 'Messages' in response:
+            count = 0
+            message = response['Messages'][0]
+            receipt_handle = message['ReceiptHandle']
+            body = message['Body']
+    
+            print("got the video name ", body," now going to download from s3")
+    
+            # Delete received message from queue -> should we only delete once download is successful ??
+            sqs.delete_message(
+                QueueUrl=queue_url,
+                ReceiptHandle=receipt_handle
+            )
+    
+            downloadFromS3(body,s3)
+            os.system("./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights " + body + " > temp")
+    
+            s = set()
+            with open('temp') as f:
+                for line in f.readlines():
+                    if "%" in line:
+                        l = line.split(':')
+                        s.add(l[0])
+            print(s)
+    
+            uploadToS3(body, list(s),s3)
+    
+        else:
+            count += 1
+            if count == 2:
+                print("Waited for 5 seconds, still no messages, so shutting down")
+                # shutdown()
+    
+            print("No messages in the queue, will wait for 5 seconds and check again")
+            time.sleep(5)
+
+
+
+def downloadFromS3(video_name,s3):
+    s3.download_file('videosnotprocessed', video_name, video_name)
+
+def shutdown(ec2):
+    # Get the current instance's id
+    print("shutting down this instance ", ec2_metadata.instance_id)
+    try:
+        response = ec2.stop_instances(InstanceIds=[ec2_metadata.instance_id], DryRun=False)
+        print(response)
+    except ClientError as e:
+        print(e)
+
+
+
+############################ RUN THREADS##################################################
+
+t1 = Thread(target=pollbucketanduploadtosqs, args=[])
+t1.start()
+
+t2= Thread(target=spawninstanceandrundarknet())
+t2.start()
+
+

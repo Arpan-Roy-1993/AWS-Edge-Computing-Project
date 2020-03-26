@@ -32,7 +32,9 @@ def pollbucketandrundarknet():
     for obj in bucket.objects.all():
         listofvideos.append(obj.key)
         bucket.download_file(obj.key, '/home/ubuntu/darknet/videostobeprocessed/'+str(obj.key))
-    if  listofvideos:
+    sendvideostosqs() 
+  '''  if  listofvideos:
+
     	print("\n\nThe controller will process the video "+str(listofvideos[0]))
     	print("\n\n")
     	os.system("./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0])+ " >/home/ubuntu/darknet/results/"+str(listofvideos[0]).replace('.',"")+".txt")
@@ -59,7 +61,7 @@ def pollbucketandrundarknet():
     	uploadresulttos3(filetoobject)
     print("this will be executed\n")
   #os.system("rm /home/ubuntu/darknet/videostobeprocessed/"+str(listofvideos[0]))
-
+'''
 def uploadresulttos3(filetoobject):
 
     client = boto3.client(
@@ -92,7 +94,7 @@ def sendvideostosqs():
 
     queue_url = 'https://sqs.us-east-1.amazonaws.com/544410772221/videos_still_not_processed'
     # Send message to SQS queue
-    listofvideos.remove(listofvideos[0])
+    #listofvideos.remove(listofvideos[0])
     while listofvideos:
         response = sqs.send_message(
         QueueUrl=queue_url,
@@ -117,7 +119,7 @@ def sendvideostosqs():
 
 t1= Thread(target=pollbucketandrundarknet,args=[])
 t1.start()
-while True:
+'''while True:
 	if len(listofvideos)<=0:
 		print("\n\nno videos in queue...\n\n")
 		time.sleep(5)
@@ -126,12 +128,14 @@ while True:
 		time.sleep(3)
 		while len(listofvideos)>0:
     			if t1.isAlive():
-        			print(" sending rest of the videos to SQS to be processed by other instances....\n")
+#        			print(" sending rest of the videos to SQS to be processed by other instances....\n")
         			t2=Thread(target=sendvideostosqs())
         			t2.start()
     			else:
         			print("\nThe controller  will execute this video\n")
         			t1=Thread(target=pollbucketandrundarknet(),args=[])
         			t1.start()
+
+'''
 
 
