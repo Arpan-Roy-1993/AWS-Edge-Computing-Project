@@ -1,10 +1,8 @@
-CSE 546: Project 1 Report
-	By:
-Rahul Sanjay: 1215133127
-Arpan Roy : 1214873322
-Satya Vundavalli: 1217195707
+			Real time Object detection using Raspberry Pi based IoT and AWS based Cloud	
+							By:
+					           Arpan Roy
 
-
+***************************************PLEASE READ "README.PDF" TO SEE DETAILED REQUIREMENTS********************************************
 Problem Statement:
 
 The goal of this project was to implement auto scaling by means of elastically provisioning resources to an edge device to achieve real time object detection on videos recorded by it. A use case for such an application can be described as follows: An intruder being detected which triggers a camera that records every motion of the intruder every five seconds. As multiple videos are recorded rapidly, the edge device cannot handle the object detection workload by itself.  Our application scales the workload to appropriate computing resources automatically. Specifically, we developed this application using Amazon Web Services (AWS based cloud) and Raspberry Pi  based IoT as  an edge device.
